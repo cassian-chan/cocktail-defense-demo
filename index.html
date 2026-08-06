@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>气泡特调防线</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game" aria-label="气泡特调防线游戏区域">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">第 <span id="wave">1</span> 波</p>
+            <h1>气泡特调防线</h1>
+          </div>
+          <button id="restartBtn" class="icon-button" type="button" aria-label="重新开始" title="重新开始">
+            ↻
+          </button>
+        </header>
+
+        <section class="status-grid" aria-label="当前状态">
+          <div class="meter">
+            <span>吧台</span>
+            <strong><span id="barHp">20</span>/20</strong>
+            <div class="meter-track">
+              <i id="barHpFill"></i>
+            </div>
+          </div>
+          <div class="meter">
+            <span>醒酒力</span>
+            <strong id="spark">70</strong>
+            <div class="meter-track tonic">
+              <i id="sparkFill"></i>
+            </div>
+          </div>
+          <div class="score">
+            <span>清醒数</span>
+            <strong id="score">0</strong>
+          </div>
+        </section>
+
+        <section class="arena">
+          <div class="lane-label">调酒区</div>
+          <div id="board" class="board" aria-label="调酒布阵格"></div>
+          <div class="lane-label enemy-label">闹场通道</div>
+          <div id="lanes" class="lanes" aria-label="敌人通道"></div>
+        </section>
+
+        <section class="bar-controls" aria-label="调酒操作">
+          <button id="summonBtn" class="primary-button" type="button">
+            <span class="button-icon">+</span>
+            调入素材
+            <small id="summonCost">20</small>
+          </button>
+          <button id="specialBtn" class="secondary-button" type="button">
+            <span class="button-icon">✦</span>
+            全场冰镇
+            <small>50</small>
+          </button>
+        </section>
+
+        <section class="recipe-panel">
+          <h2>今日酒单</h2>
+          <div id="recipeList" class="recipes"></div>
+        </section>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="result" class="result hidden" role="dialog" aria-modal="true">
+          <div class="result-panel">
+            <p id="resultKicker">营业结束</p>
+            <h2 id="resultTitle">吧台守住了</h2>
+            <p id="resultText">你把混乱的夜晚调回了清醒频道。</p>
+            <button id="resultRestartBtn" class="primary-button" type="button">再来一局</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
