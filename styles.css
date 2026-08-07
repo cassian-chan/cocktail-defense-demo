@@ -18,6 +18,11 @@
   box-sizing: border-box;
 }
 
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -28,10 +33,16 @@ body {
   background:
     linear-gradient(180deg, rgba(32, 46, 48, 0.9), rgba(17, 22, 23, 1)),
     repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 46px);
+  overscroll-behavior: none;
+}
+
+body.is-dragging {
+  overflow: hidden;
 }
 
 button {
   font: inherit;
+  touch-action: manipulation;
 }
 
 .shell {
@@ -197,6 +208,7 @@ h2 {
 
 .slot {
   position: relative;
+  touch-action: none;
   min-width: 0;
   border: 1px dashed rgba(255, 255, 255, 0.2);
   border-radius: 8px;
@@ -214,6 +226,9 @@ h2 {
 
 .unit {
   position: absolute;
+  touch-action: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   inset: 4px;
   display: grid;
   grid-template-rows: 36px 1fr;
@@ -232,9 +247,16 @@ h2 {
   cursor: grabbing;
 }
 
-.unit.selected {
-  outline: 3px solid var(--ink);
-  outline-offset: 2px;
+.unit.dragging {
+  opacity: 0.35;
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.96;
+  transform: translate(-50%, -50%);
 }
 
 .unit .mark {
@@ -571,7 +593,7 @@ button small {
   .primary-button,
   .secondary-button {
     gap: 6px;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .button-icon {

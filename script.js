@@ -46,7 +46,8 @@ let units = [];
 let enemies = [];
 let projectiles = [];
 let draggedId = null;
-let selectedId = null;
+let dragState = null;
+let dragGhost = null;
 let state;
 let lastTime = 0;
 let toastTimer = 0;
@@ -74,7 +75,8 @@ function init() {
   enemies = [];
   projectiles = [];
   draggedId = null;
-  selectedId = null;
+  dragState = null;
+  removeDragGhost();
   lastTime = performance.now();
   buildBoard();
   buildLanes();
@@ -83,7 +85,7 @@ function init() {
   placeUnit(1, 1);
   placeUnit(3, 1);
   resultEl.classList.add("hidden");
-  showToast("营业开始，先把相同素材拖到一起合成。");
+  showToast("营业开始，拖动相同素材到一起合成。");
   updateHud();
   rafId = requestAnimationFrame(loop);
 }
@@ -95,10 +97,6 @@ function buildBoard() {
     const el = document.createElement("div");
     el.className = "slot";
     el.dataset.index = slot.index;
-    el.addEventListener("click", onSlotClick);
-    el.addEventListener("dragover", onDragOver);
-    el.addEventListener("dragleave", () => el.classList.remove("over"));
-    el.addEventListener("drop", onDrop);
     boardEl.appendChild(el);
   });
 }
@@ -144,62 +142,140 @@ function placeUnit(slotIndex, level) {
 
 function renderUnits() {
   boardEl.querySelectorAll(".unit").forEach((el) => el.remove());
-  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("selected-target"));
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over", "selected-target"));
   units.forEach((unit) => {
     const recipe = recipes[unit.level - 1];
     const slotEl = boardEl.querySelector(`[data-index="${unit.slot}"]`);
     const el = document.createElement("div");
-    el.className = `unit level-${unit.level}${unit.id === selectedId ? " selected" : ""}`;
-    el.draggable = true;
+    el.className = `unit level-${unit.level}`;
+    el.draggable = false;
     el.dataset.id = unit.id;
     el.innerHTML = `
       <div class="mark">${recipe.mark}</div>
       <div class="name">${recipe.name}</div>
       <div class="cooldown"><i style="width:${getCooldownPercent(unit)}%"></i></div>
     `;
-    el.addEventListener("dragstart", (event) => {
-      draggedId = unit.id;
-      selectedId = unit.id;
-      event.dataTransfer.effectAllowed = "move";
-      el.classList.add("selected");
-    });
-    el.addEventListener("dragend", () => {
-      draggedId = null;
-      boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over"));
-    });
-    el.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (selectedId && selectedId !== unit.id) {
-        moveOrMerge(selectedId, unit.slot);
-        return;
-      }
-      selectedId = selectedId === unit.id ? null : unit.id;
-      renderUnits();
-    });
+    el.addEventListener("pointerdown", (event) => startUnitDrag(event, unit.id));
     slotEl.appendChild(el);
   });
-  if (selectedId) {
-    boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.add("selected-target"));
+}
+
+function startUnitDrag(event, unitId) {
+  if (state.over) return;
+  if (event.button !== undefined && event.button !== 0) return;
+
+  const unit = units.find((item) => item.id === unitId);
+  if (!unit) return;
+
+  event.preventDefault();
+  draggedId = unitId;
+  const sourceEl = event.currentTarget;
+  dragState = {
+    unitId,
+    sourceEl,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    sourceSlot: unit.slot,
+    hasMoved: false,
+  };
+
+  document.body.classList.add("is-dragging");
+  sourceEl.classList.add("dragging");
+  sourceEl.setPointerCapture?.(event.pointerId);
+  createDragGhost(sourceEl, event.clientX, event.clientY);
+
+  sourceEl.addEventListener("pointermove", onUnitDragMove);
+  sourceEl.addEventListener("pointerup", onUnitDragEnd, { once: true });
+  sourceEl.addEventListener("pointercancel", onUnitDragCancel, { once: true });
+}
+
+function onUnitDragMove(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  event.preventDefault();
+
+  const dx = event.clientX - dragState.startX;
+  const dy = event.clientY - dragState.startY;
+  if (Math.hypot(dx, dy) > 4) dragState.hasMoved = true;
+
+  moveDragGhost(event.clientX, event.clientY);
+  highlightDropSlot(getSlotFromPoint(event.clientX, event.clientY));
+}
+
+function onUnitDragEnd(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  event.preventDefault();
+
+  const targetSlotEl = getSlotFromPoint(event.clientX, event.clientY);
+  const sourceId = dragState.unitId;
+  const sourceSlot = dragState.sourceSlot;
+  const hasMoved = dragState.hasMoved;
+  cleanupDrag();
+
+  if (!hasMoved || !targetSlotEl) {
+    renderUnits();
+    return;
   }
+
+  const targetSlot = Number(targetSlotEl.dataset.index);
+  if (targetSlot === sourceSlot) {
+    renderUnits();
+    return;
+  }
+
+  moveOrMerge(sourceId, targetSlot);
 }
 
-function onDragOver(event) {
-  event.preventDefault();
-  event.currentTarget.classList.add("over");
+function onUnitDragCancel(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  cleanupDrag();
+  renderUnits();
 }
 
-function onDrop(event) {
-  event.preventDefault();
-  event.currentTarget.classList.remove("over");
-  const targetSlot = Number(event.currentTarget.dataset.index);
-  moveOrMerge(draggedId, targetSlot);
+function createDragGhost(sourceEl, x, y) {
+  removeDragGhost();
+  const rect = sourceEl.getBoundingClientRect();
+  dragGhost = sourceEl.cloneNode(true);
+  dragGhost.classList.remove("dragging");
+  dragGhost.classList.add("drag-ghost");
+  dragGhost.style.width = `${rect.width}px`;
+  dragGhost.style.height = `${rect.height}px`;
+  document.body.appendChild(dragGhost);
+  moveDragGhost(x, y);
 }
 
-function onSlotClick(event) {
-  if (event.target.closest(".unit")) return;
-  if (!selectedId) return;
-  const targetSlot = Number(event.currentTarget.dataset.index);
-  moveOrMerge(selectedId, targetSlot);
+function moveDragGhost(x, y) {
+  if (!dragGhost) return;
+  dragGhost.style.left = `${x}px`;
+  dragGhost.style.top = `${y}px`;
+}
+
+function removeDragGhost() {
+  dragGhost?.remove();
+  dragGhost = null;
+}
+
+function getSlotFromPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el?.closest?.(".slot") || null;
+}
+
+function highlightDropSlot(slotEl) {
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over"));
+  slotEl?.classList.add("over");
+}
+
+function cleanupDrag() {
+  if (!dragState) return;
+  const { sourceEl, pointerId } = dragState;
+  sourceEl.removeEventListener("pointermove", onUnitDragMove);
+  sourceEl.releasePointerCapture?.(pointerId);
+  sourceEl.classList.remove("dragging");
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over"));
+  document.body.classList.remove("is-dragging");
+  removeDragGhost();
+  draggedId = null;
+  dragState = null;
 }
 
 function moveOrMerge(sourceId, targetSlot) {
@@ -209,16 +285,18 @@ function moveOrMerge(sourceId, targetSlot) {
   const occupant = units.find((unit) => unit.slot === targetSlot);
   if (!occupant) {
     dragged.slot = targetSlot;
-    selectedId = null;
     renderUnits();
     return;
   }
 
-  if (occupant.id === dragged.id) return;
+  if (occupant.id === dragged.id) {
+    renderUnits();
+    return;
+  }
+
   if (occupant.level === dragged.level && occupant.level < recipes.length) {
     const nextLevel = occupant.level + 1;
     units = units.filter((unit) => unit.id !== dragged.id && unit.id !== occupant.id);
-    selectedId = null;
     placeUnit(targetSlot, nextLevel);
     showToast(`调成了 ${recipes[nextLevel - 1].name}`);
     return;
@@ -227,7 +305,6 @@ function moveOrMerge(sourceId, targetSlot) {
   const oldSlot = dragged.slot;
   dragged.slot = occupant.slot;
   occupant.slot = oldSlot;
-  selectedId = null;
   renderUnits();
 }
 
@@ -517,9 +594,27 @@ function endGame(won) {
   updateHud();
 }
 
+preventIOSGestureZoom();
+
 summonBtn.addEventListener("click", summon);
 specialBtn.addEventListener("click", useSpecial);
 restartBtn.addEventListener("click", init);
 resultRestartBtn.addEventListener("click", init);
+
+document.querySelector(".game").addEventListener("contextmenu", (event) => event.preventDefault());
+
+function preventIOSGestureZoom() {
+  let lastTouchEnd = 0;
+  document.addEventListener("gesturestart", (event) => event.preventDefault());
+  document.addEventListener(
+    "touchend",
+    (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) event.preventDefault();
+      lastTouchEnd = now;
+    },
+    { passive: false }
+  );
+}
 
 init();
