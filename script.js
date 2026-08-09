@@ -22,29 +22,44 @@ const rows = 4;
 const cols = 3;
 const laneCount = 4;
 const maxHp = 20;
+const maxEnemyHp = 20;
 const maxSpark = 100;
-const summonCost = 20;
+const summonCost = 16;
 const specialCost = 50;
 const winWave = 6;
 
-const recipes = [
-  { level: 1, name: "气泡水", mark: "泡", damage: 1, speed: 620, range: 1000, color: "#5bd2d5", note: "稳定单发" },
-  { level: 2, name: "冰柠苏打", mark: "冰", damage: 2, speed: 560, range: 1000, color: "#b7ef67", slow: 0.72, note: "轻微减速" },
-  { level: 3, name: "薄荷莫吉托", mark: "荷", damage: 4, speed: 720, range: 1000, color: "#f3be58", splash: 24, note: "小范围溅射" },
-  { level: 4, name: "金汤力", mark: "汤", damage: 7, speed: 780, range: 1000, color: "#f47796", slow: 0.6, note: "强力冰镇" },
-  { level: 5, name: "长岛冰茶", mark: "岛", damage: 12, speed: 940, range: 1000, color: "#d8b4fe", splash: 46, note: "大范围清场" },
+const ingredients = {
+  whiskey: { key: "whiskey", name: "威士忌", mark: "威", color: "#f3be58", weight: 1 },
+  soda: { key: "soda", name: "苏打水", mark: "苏", color: "#5bd2d5", weight: 2 },
+  gin: { key: "gin", name: "金酒", mark: "金", color: "#b7ef67", weight: 1.25 },
+  tonic: { key: "tonic", name: "汤力水", mark: "汤", color: "#d8b4fe", weight: 1.25 },
+  tequila: { key: "tequila", name: "龙舌兰", mark: "龙", color: "#f47796", weight: 1 },
+  ginger: { key: "ginger", name: "姜汁汽水", mark: "姜", color: "#e0a94f", weight: 1.1 },
+  lime: { key: "lime", name: "青柠", mark: "柠", color: "#9be15d", weight: 0.9 },
+};
+
+const cocktails = [
+  { inputs: ["whiskey", "soda"], name: "Highball", mark: "高", hp: 8, damage: 2, speed: 13, attackSpeed: 780, color: "#f3be58", note: "威士忌 + 苏打水" },
+  { inputs: ["tequila", "soda"], name: "Paloma", mark: "帕", hp: 9, damage: 2, speed: 12, attackSpeed: 720, color: "#f47796", note: "龙舌兰 + 苏打水" },
+  { inputs: ["gin", "tonic"], name: "金汤力", mark: "汤", hp: 8, damage: 3, speed: 11, attackSpeed: 820, color: "#b7ef67", note: "金酒 + 汤力水" },
+  { inputs: ["gin", "ginger"], name: "Gin Ginger", mark: "姜", hp: 7, damage: 2, speed: 16, attackSpeed: 640, color: "#e0a94f", note: "金酒 + 姜汁汽水" },
+  { inputs: ["whiskey", "ginger"], name: "Whisky Ginger", mark: "士", hp: 10, damage: 2, speed: 10, attackSpeed: 760, color: "#f0a348", note: "威士忌 + 姜汁汽水" },
+  { inputs: ["tequila", "lime"], name: "青柠龙舌兰", mark: "青", hp: 6, damage: 4, speed: 15, attackSpeed: 920, color: "#9be15d", note: "龙舌兰 + 青柠" },
+  { inputs: ["soda", "lime"], name: "青柠苏打", mark: "泡", hp: 6, damage: 1, speed: 18, attackSpeed: 520, color: "#5bd2d5", note: "苏打水 + 青柠" },
 ];
 
+const recipeMap = new Map(cocktails.map((recipe) => [recipeKey(recipe.inputs), recipe]));
+
 const enemyKinds = [
-  { name: "酒蒙子", mark: "醉", hp: 3, speed: 23, damage: 1 },
-  { name: "劝酒怪", mark: "劝", hp: 5, speed: 19, damage: 2 },
-  { name: "宿醉影", mark: "晕", hp: 8, speed: 15, damage: 3 },
+  { name: "酒蒙子", mark: "醉", hp: 5, speed: 9, damage: 1, attackSpeed: 880 },
+  { name: "劝酒怪", mark: "劝", hp: 8, speed: 7, damage: 2, attackSpeed: 980 },
+  { name: "宿醉影", mark: "晕", hp: 11, speed: 6, damage: 3, attackSpeed: 1120 },
 ];
 
 let slots = [];
 let units = [];
+let allies = [];
 let enemies = [];
-let projectiles = [];
 let draggedId = null;
 let dragState = null;
 let dragGhost = null;
@@ -54,15 +69,20 @@ let toastTimer = 0;
 let rafId = 0;
 let idCounter = 0;
 
+function recipeKey(keys) {
+  return [...keys].sort().join("+");
+}
+
 function newState() {
   return {
     hp: maxHp,
-    spark: 70,
-    score: 0,
+    enemyHp: maxEnemyHp,
+    spark: 72,
+    mixes: 0,
     wave: 1,
     spawnTimer: 900,
     spawnedInWave: 0,
-    toSpawn: 5,
+    toSpawn: 4,
     wavePause: 0,
     over: false,
   };
@@ -72,8 +92,8 @@ function init() {
   cancelAnimationFrame(rafId);
   state = newState();
   units = [];
+  allies = [];
   enemies = [];
-  projectiles = [];
   draggedId = null;
   dragState = null;
   removeDragGhost();
@@ -81,11 +101,14 @@ function init() {
   buildBoard();
   buildLanes();
   renderRecipes();
-  placeUnit(0, 1);
-  placeUnit(1, 1);
-  placeUnit(3, 1);
+  placeIngredient(0, "whiskey");
+  placeIngredient(1, "soda");
+  placeIngredient(3, "gin");
+  placeIngredient(4, "tonic");
+  placeIngredient(6, "tequila");
+  placeIngredient(7, "ginger");
   resultEl.classList.add("hidden");
-  showToast("营业开始，拖动相同素材到一起合成。");
+  showToast("拖动素材到另一种素材上，按配方调出鸡尾酒出战。");
   updateHud();
   rafId = requestAnimationFrame(loop);
 }
@@ -119,22 +142,21 @@ function buildLanes() {
 
 function renderRecipes() {
   recipeListEl.innerHTML = "";
-  recipes.forEach((recipe) => {
+  cocktails.forEach((recipe) => {
     const item = document.createElement("div");
     item.className = "recipe";
-    item.innerHTML = `<strong>${recipe.level}级 ${recipe.name}</strong><span>${recipe.note} · 伤害 ${recipe.damage}</span>`;
+    item.innerHTML = `<strong>${recipe.name}</strong><span>${recipe.note} · 攻击 ${recipe.damage}</span>`;
     recipeListEl.appendChild(item);
   });
 }
 
-function placeUnit(slotIndex, level) {
-  const recipe = recipes[level - 1];
-  if (!recipe || units.some((unit) => unit.slot === slotIndex)) return false;
+function placeIngredient(slotIndex, key) {
+  const ingredient = ingredients[key];
+  if (!ingredient || units.some((unit) => unit.slot === slotIndex)) return false;
   units.push({
     id: createId("unit"),
     slot: slotIndex,
-    level,
-    cooldown: Math.random() * recipe.speed,
+    key,
   });
   renderUnits();
   return true;
@@ -142,18 +164,18 @@ function placeUnit(slotIndex, level) {
 
 function renderUnits() {
   boardEl.querySelectorAll(".unit").forEach((el) => el.remove());
-  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over", "selected-target"));
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over", "mixable"));
   units.forEach((unit) => {
-    const recipe = recipes[unit.level - 1];
+    const ingredient = ingredients[unit.key];
     const slotEl = boardEl.querySelector(`[data-index="${unit.slot}"]`);
     const el = document.createElement("div");
-    el.className = `unit level-${unit.level}`;
+    el.className = "unit ingredient-card";
     el.draggable = false;
     el.dataset.id = unit.id;
+    el.style.background = ingredient.color;
     el.innerHTML = `
-      <div class="mark">${recipe.mark}</div>
-      <div class="name">${recipe.name}</div>
-      <div class="cooldown"><i style="width:${getCooldownPercent(unit)}%"></i></div>
+      <div class="mark">${ingredient.mark}</div>
+      <div class="name">${ingredient.name}</div>
     `;
     el.addEventListener("pointerdown", (event) => startUnitDrag(event, unit.id));
     slotEl.appendChild(el);
@@ -223,7 +245,7 @@ function onUnitDragEnd(event) {
     return;
   }
 
-  moveOrMerge(sourceId, targetSlot);
+  moveOrMix(sourceId, targetSlot);
 }
 
 function onUnitDragCancel(event) {
@@ -261,8 +283,15 @@ function getSlotFromPoint(x, y) {
 }
 
 function highlightDropSlot(slotEl) {
-  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over"));
-  slotEl?.classList.add("over");
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over", "mixable"));
+  if (!slotEl || !dragState) return;
+  slotEl.classList.add("over");
+  const targetSlot = Number(slotEl.dataset.index);
+  const source = units.find((unit) => unit.id === dragState.unitId);
+  const target = units.find((unit) => unit.slot === targetSlot);
+  if (source && target && source.id !== target.id && findRecipe(source.key, target.key)) {
+    slotEl.classList.add("mixable");
+  }
 }
 
 function cleanupDrag() {
@@ -271,14 +300,18 @@ function cleanupDrag() {
   sourceEl.removeEventListener("pointermove", onUnitDragMove);
   sourceEl.releasePointerCapture?.(pointerId);
   sourceEl.classList.remove("dragging");
-  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over"));
+  boardEl.querySelectorAll(".slot").forEach((slot) => slot.classList.remove("over", "mixable"));
   document.body.classList.remove("is-dragging");
   removeDragGhost();
   draggedId = null;
   dragState = null;
 }
 
-function moveOrMerge(sourceId, targetSlot) {
+function findRecipe(a, b) {
+  return recipeMap.get(recipeKey([a, b]));
+}
+
+function moveOrMix(sourceId, targetSlot) {
   const dragged = units.find((unit) => unit.id === sourceId);
   if (!dragged) return;
 
@@ -294,11 +327,15 @@ function moveOrMerge(sourceId, targetSlot) {
     return;
   }
 
-  if (occupant.level === dragged.level && occupant.level < recipes.length) {
-    const nextLevel = occupant.level + 1;
+  const recipe = findRecipe(dragged.key, occupant.key);
+  if (recipe) {
+    const lane = Math.floor(targetSlot / cols);
     units = units.filter((unit) => unit.id !== dragged.id && unit.id !== occupant.id);
-    placeUnit(targetSlot, nextLevel);
-    showToast(`调成了 ${recipes[nextLevel - 1].name}`);
+    spawnAlly(recipe, lane);
+    state.mixes += 1;
+    state.spark = Math.min(maxSpark, state.spark + 10);
+    renderUnits();
+    showToast(`${ingredients[dragged.key].name} + ${ingredients[occupant.key].name} = ${recipe.name}`);
     return;
   }
 
@@ -306,37 +343,67 @@ function moveOrMerge(sourceId, targetSlot) {
   dragged.slot = occupant.slot;
   occupant.slot = oldSlot;
   renderUnits();
+  showToast("这个组合暂时没有酒单，已交换位置。");
+}
+
+function spawnAlly(recipe, lane) {
+  allies.push({
+    id: createId("ally"),
+    lane,
+    x: 8,
+    hp: recipe.hp,
+    maxHp: recipe.hp,
+    damage: recipe.damage,
+    speed: recipe.speed,
+    attackSpeed: recipe.attackSpeed,
+    cooldown: 120,
+    mark: recipe.mark,
+    name: recipe.name,
+    color: recipe.color,
+    engagedId: null,
+  });
 }
 
 function summon() {
   if (state.over) return;
   const free = slots.filter((slot) => !units.some((unit) => unit.slot === slot.index));
   if (!free.length) {
-    showToast("调酒区满了，先合成或换位。");
+    showToast("调酒区满了，先拖动素材组合或换位。");
     return;
   }
   if (state.spark < summonCost) {
-    showToast("醒酒力不够，等一小会儿。");
+    showToast("调酒力不够，等一小会儿。");
     return;
   }
   state.spark -= summonCost;
   const slot = free[Math.floor(Math.random() * free.length)];
-  placeUnit(slot.index, 1);
+  placeIngredient(slot.index, randomIngredientKey());
   updateHud();
+}
+
+function randomIngredientKey() {
+  const pool = Object.values(ingredients);
+  const total = pool.reduce((sum, item) => sum + item.weight, 0);
+  let roll = Math.random() * total;
+  for (const item of pool) {
+    roll -= item.weight;
+    if (roll <= 0) return item.key;
+  }
+  return pool[0].key;
 }
 
 function useSpecial() {
   if (state.over) return;
   if (state.spark < specialCost) {
-    showToast("醒酒力不够发动全场冰镇。");
+    showToast("调酒力不够发动全场冰镇。");
     return;
   }
   state.spark -= specialCost;
   enemies.forEach((enemy) => {
-    enemy.hp -= 5;
-    enemy.slowUntil = performance.now() + 2400;
+    enemy.hp -= 3;
+    enemy.slowUntil = performance.now() + 2500;
   });
-  showToast("全场冰镇发动，闹场速度下降。");
+  showToast("全场冰镇发动，酒蒙子推进变慢。");
   updateHud();
 }
 
@@ -351,12 +418,10 @@ function loop(now) {
 }
 
 function updateGame(delta, now) {
-  state.spark = Math.min(maxSpark, state.spark + delta * 0.012);
+  state.spark = Math.min(maxSpark, state.spark + delta * 0.014);
   updateSpawns(delta);
-  updateUnits(delta, now);
-  updateEnemies(delta);
-  updateProjectiles(delta);
-  clearDefeatedEnemies();
+  updateBattle(delta, now);
+  clearDefeated();
   checkWaveEnd(delta);
   updateHud();
 }
@@ -367,122 +432,104 @@ function updateSpawns(delta) {
   if (state.spawnedInWave >= state.toSpawn || state.spawnTimer > 0) return;
   spawnEnemy();
   state.spawnedInWave += 1;
-  state.spawnTimer = Math.max(420, 1250 - state.wave * 90);
+  state.spawnTimer = Math.max(620, 1450 - state.wave * 90);
 }
 
 function spawnEnemy() {
   const kindIndex = Math.min(enemyKinds.length - 1, Math.floor((state.wave - 1) / 2));
   const kind = enemyKinds[Math.floor(Math.random() * (kindIndex + 1))];
   const lane = Math.floor(Math.random() * laneCount);
-  const hp = kind.hp + Math.ceil(state.wave * 1.2);
+  const hp = kind.hp + Math.ceil(state.wave * 1.15);
   enemies.push({
     id: createId("enemy"),
     lane,
     x: 92,
     hp,
     maxHp: hp,
-    speed: kind.speed + state.wave * 1.2,
     damage: kind.damage,
+    speed: kind.speed + state.wave * 0.45,
+    attackSpeed: kind.attackSpeed,
+    cooldown: 260,
     mark: kind.mark,
     name: kind.name,
     slowUntil: 0,
+    engagedId: null,
   });
 }
 
-function updateUnits(delta, now) {
-  units.forEach((unit) => {
-    const recipe = recipes[unit.level - 1];
-    unit.cooldown -= delta;
-    if (unit.cooldown > 0) return;
-    const lane = Math.floor(unit.slot / cols);
-    const target = enemies
-      .filter((enemy) => enemy.lane === lane)
-      .sort((a, b) => a.x - b.x)[0];
-    if (!target) return;
-    unit.cooldown = recipe.speed;
-    fireProjectile(unit, target, recipe, now);
+function updateBattle(delta, now) {
+  allies.forEach((ally) => {
+    const target = findClosestEnemy(ally);
+    ally.engagedId = target && Math.abs(target.x - ally.x) <= 9 ? target.id : null;
+    if (ally.engagedId) {
+      attack(ally, target, delta);
+      return;
+    }
+    ally.x += (ally.speed * delta) / 1000;
   });
-}
 
-function fireProjectile(unit, target, recipe) {
-  const unitCenter = getUnitCenter(unit.slot);
-  const targetCenter = getEnemyCenter(target);
-  projectiles.push({
-    id: createId("shot"),
-    x: unitCenter.x,
-    y: unitCenter.y,
-    startX: unitCenter.x,
-    startY: unitCenter.y,
-    targetId: target.id,
-    targetX: targetCenter.x,
-    targetY: targetCenter.y,
-    progress: 0,
-    damage: recipe.damage,
-    color: recipe.color,
-    slow: recipe.slow || 0,
-    splash: recipe.splash || 0,
-  });
-}
-
-function updateEnemies(delta) {
   enemies.forEach((enemy) => {
-    const chilled = enemy.slowUntil > performance.now();
-    const speed = chilled ? enemy.speed * 0.45 : enemy.speed;
+    const target = findClosestAlly(enemy);
+    enemy.engagedId = target && Math.abs(target.x - enemy.x) <= 9 ? target.id : null;
+    if (enemy.engagedId) {
+      attack(enemy, target, delta);
+      return;
+    }
+    const chilled = enemy.slowUntil > now;
+    const speed = chilled ? enemy.speed * 0.48 : enemy.speed;
     enemy.x -= (speed * delta) / 1000;
   });
 
+  allies
+    .filter((ally) => ally.x >= 100)
+    .forEach((ally) => {
+      state.enemyHp -= 2;
+      state.spark = Math.min(maxSpark, state.spark + 8);
+      showToast(`${ally.name}冲散了对面吧台`);
+    });
+  allies = allies.filter((ally) => ally.x < 100);
+
   enemies
-    .filter((enemy) => enemy.x <= -8)
+    .filter((enemy) => enemy.x <= 0)
     .forEach((enemy) => {
       state.hp -= enemy.damage;
-      showToast(`${enemy.name}撞到了吧台`);
+      showToast(`${enemy.name}闯进了吧台`);
     });
+  enemies = enemies.filter((enemy) => enemy.x > 0);
 
-  enemies = enemies.filter((enemy) => enemy.x > -8);
+  if (state.enemyHp <= 0) endGame(true);
   if (state.hp <= 0) endGame(false);
 }
 
-function updateProjectiles(delta) {
-  projectiles.forEach((projectile) => {
-    projectile.progress += delta / 210;
-    const target = enemies.find((enemy) => enemy.id === projectile.targetId);
-    if (target) {
-      const center = getEnemyCenter(target);
-      projectile.targetX = center.x;
-      projectile.targetY = center.y;
-    }
-    const t = Math.min(1, projectile.progress);
-    projectile.x = projectile.startX + (projectile.targetX - projectile.startX) * t;
-    projectile.y = projectile.startY + (projectile.targetY - projectile.startY) * t;
-    if (t >= 1) hitEnemy(projectile);
-  });
-  projectiles = projectiles.filter((projectile) => projectile.progress < 1);
+function findClosestEnemy(ally) {
+  return enemies
+    .filter((enemy) => enemy.lane === ally.lane && enemy.x >= ally.x - 2)
+    .sort((a, b) => a.x - b.x)[0];
 }
 
-function hitEnemy(projectile) {
-  const target = enemies.find((enemy) => enemy.id === projectile.targetId);
-  if (!target) return;
-  target.hp -= projectile.damage;
-  if (projectile.slow) {
-    target.slowUntil = performance.now() + 1200 + projectile.slow * 1000;
-  }
-  if (projectile.splash) {
-    enemies.forEach((enemy) => {
-      if (enemy.id === target.id || enemy.lane !== target.lane) return;
-      if (Math.abs(enemy.x - target.x) <= projectile.splash) {
-        enemy.hp -= Math.ceil(projectile.damage * 0.45);
-      }
-    });
-  }
+function findClosestAlly(enemy) {
+  return allies
+    .filter((ally) => ally.lane === enemy.lane && ally.x <= enemy.x + 2)
+    .sort((a, b) => b.x - a.x)[0];
 }
 
-function clearDefeatedEnemies() {
-  const before = enemies.length;
+function attack(attacker, target, delta) {
+  attacker.cooldown -= delta;
+  if (attacker.cooldown > 0) return;
+  target.hp -= attacker.damage;
+  attacker.cooldown = attacker.attackSpeed;
+}
+
+function clearDefeated() {
+  const defeatedEnemies = enemies.filter((enemy) => enemy.hp <= 0).length;
+  const defeatedAllies = allies.filter((ally) => ally.hp <= 0).length;
   enemies = enemies.filter((enemy) => enemy.hp > 0);
-  const defeated = before - enemies.length;
-  if (defeated > 0) {
-    state.score += defeated;
-    state.spark = Math.min(maxSpark, state.spark + defeated * 8);
+  allies = allies.filter((ally) => ally.hp > 0);
+  if (defeatedEnemies > 0) {
+    state.spark = Math.min(maxSpark, state.spark + defeatedEnemies * 7);
+  }
+  if (defeatedAllies > 0) {
+    state.spark = Math.min(maxSpark, state.spark + defeatedAllies * 3);
   }
 }
 
@@ -494,26 +541,35 @@ function checkWaveEnd(delta) {
   }
   if (state.spawnedInWave >= state.toSpawn && enemies.length === 0) {
     if (state.wave >= winWave) {
-      endGame(true);
-      return;
+      state.enemyHp -= 4;
+      if (state.enemyHp <= 0) endGame(true);
     }
     state.wavePause = 1400;
-    state.spark = Math.min(maxSpark, state.spark + 30);
-    showToast("这一波稳住了，补一点醒酒力。");
+    state.spark = Math.min(maxSpark, state.spark + 24);
+    showToast("这一轮压住了，补充调酒力。");
   }
 }
 
 function startNextWave() {
   state.wave += 1;
   state.spawnedInWave = 0;
-  state.toSpawn = 4 + state.wave * 2;
+  state.toSpawn = 3 + state.wave * 2;
   state.spawnTimer = 700;
-  showToast(`第 ${state.wave} 波闹场开始`);
+  showToast(`第 ${state.wave} 轮对战开始`);
 }
 
 function renderGame() {
-  updateUnitCooldowns();
-  lanesEl.querySelectorAll(".enemy,.projectile").forEach((el) => el.remove());
+  lanesEl.querySelectorAll(".enemy,.ally").forEach((el) => el.remove());
+  allies.forEach((ally) => {
+    const el = document.createElement("div");
+    el.className = "ally";
+    el.style.left = `${ally.x}%`;
+    el.style.top = `${getLaneY(ally.lane)}%`;
+    el.style.background = `linear-gradient(180deg, ${ally.color}, #243032)`;
+    el.title = ally.name;
+    el.innerHTML = `<b>${ally.mark}</b><em>${ally.name}</em><small><i style="width:${Math.max(0, (ally.hp / ally.maxHp) * 100)}%"></i></small>`;
+    lanesEl.appendChild(el);
+  });
   enemies.forEach((enemy) => {
     const el = document.createElement("div");
     el.className = "enemy";
@@ -523,41 +579,11 @@ function renderGame() {
     el.innerHTML = `<b>${enemy.mark}</b><em>${enemy.name}</em><small><i style="width:${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%"></i></small>`;
     lanesEl.appendChild(el);
   });
-  projectiles.forEach((projectile) => {
-    const el = document.createElement("div");
-    el.className = "projectile";
-    el.style.left = `${projectile.x}%`;
-    el.style.top = `${projectile.y}%`;
-    el.style.background = projectile.color;
-    el.style.color = projectile.color;
-    lanesEl.appendChild(el);
-  });
-}
-
-function updateUnitCooldowns() {
-  units.forEach((unit) => {
-    const el = boardEl.querySelector(`.unit[data-id="${unit.id}"] .cooldown i`);
-    if (el) el.style.width = `${getCooldownPercent(unit)}%`;
-  });
 }
 
 function createId(prefix) {
   idCounter += 1;
   return `${prefix}-${idCounter}`;
-}
-
-function getCooldownPercent(unit) {
-  const recipe = recipes[unit.level - 1];
-  return Math.max(0, Math.min(100, 100 - (unit.cooldown / recipe.speed) * 100));
-}
-
-function getUnitCenter(slotIndex) {
-  const lane = Math.floor(slotIndex / cols);
-  return { x: -28, y: getLaneY(lane) };
-}
-
-function getEnemyCenter(enemy) {
-  return { x: enemy.x, y: getLaneY(enemy.lane) };
 }
 
 function getLaneY(lane) {
@@ -570,7 +596,7 @@ function updateHud() {
   barHpFillEl.style.width = `${Math.max(0, (state.hp / maxHp) * 100)}%`;
   sparkEl.textContent = Math.floor(state.spark);
   sparkFillEl.style.width = `${Math.max(0, (state.spark / maxSpark) * 100)}%`;
-  scoreEl.textContent = state.score;
+  scoreEl.textContent = Math.max(0, Math.ceil(state.enemyHp));
   summonCostEl.textContent = summonCost;
   summonBtn.disabled = state.spark < summonCost || state.over;
   specialBtn.disabled = state.spark < specialCost || state.over;
@@ -584,12 +610,13 @@ function showToast(message) {
 }
 
 function endGame(won) {
+  if (state.over) return;
   state.over = true;
-  resultKickerEl.textContent = won ? "营业成功" : "吧台失守";
-  resultTitleEl.textContent = won ? "今晚清醒收工" : "酒劲冲破防线";
+  resultKickerEl.textContent = won ? "调酒胜利" : "吧台失守";
+  resultTitleEl.textContent = won ? "组合打穿对局" : "酒蒙子压过来了";
   resultTextEl.textContent = won
-    ? `你守住了 ${winWave} 波闹场，清醒数 ${state.score}。`
-    : `你清醒了 ${state.score} 个闹场客人，再调一次阵容。`;
+    ? `你调出了 ${state.mixes} 杯组合酒，把对面吧台打散了。`
+    : `你完成了 ${state.mixes} 次有效组合，再调一次配方节奏。`;
   resultEl.classList.remove("hidden");
   updateHud();
 }

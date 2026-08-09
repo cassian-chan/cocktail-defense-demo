@@ -220,8 +220,9 @@ h2 {
   background: rgba(91, 210, 213, 0.12);
 }
 
-.slot.selected-target {
+.slot.mixable {
   border-color: var(--lime);
+  background: rgba(183, 239, 103, 0.14);
 }
 
 .unit {
@@ -285,28 +286,8 @@ h2 {
   font-weight: 900;
 }
 
-.unit.level-1 { background: var(--aqua); }
-.unit.level-2 { background: var(--lime); }
-.unit.level-3 { background: var(--amber); }
-.unit.level-4 { background: var(--pink); }
-.unit.level-5 { background: #d8b4fe; }
-
-.cooldown {
-  position: absolute;
-  left: 5px;
-  right: 5px;
-  bottom: 4px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: rgba(0, 0, 0, 0.16);
-}
-
-.cooldown i {
-  display: block;
-  height: 100%;
-  width: 0%;
-  background: rgba(0, 0, 0, 0.58);
+.ingredient-card {
+  background: var(--aqua);
 }
 
 .lanes {
@@ -357,7 +338,8 @@ h2 {
   transform: translateY(-50%);
 }
 
-.enemy {
+.enemy,
+.ally {
   position: absolute;
   z-index: 4;
   width: 58px;
@@ -374,11 +356,13 @@ h2 {
   transform: translate(-50%, -50%);
 }
 
-.enemy b {
+.enemy b,
+.ally b {
   font-size: 22px;
 }
 
-.enemy em {
+.enemy em,
+.ally em {
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
@@ -388,7 +372,8 @@ h2 {
   font-weight: 900;
 }
 
-.enemy small {
+.enemy small,
+.ally small {
   position: absolute;
   left: 4px;
   right: 4px;
@@ -399,22 +384,25 @@ h2 {
   background: rgba(0, 0, 0, 0.22);
 }
 
-.enemy small i {
+.enemy small i,
+.ally small i {
   display: block;
   height: 100%;
   width: 100%;
+}
+
+.enemy small i {
   background: var(--red);
 }
 
-.projectile {
-  position: absolute;
-  z-index: 5;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--aqua);
-  box-shadow: 0 0 14px currentColor;
-  transform: translate(-50%, -50%);
+.ally {
+  color: #102022;
+  border-color: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.34), 0 0 0 3px rgba(91, 210, 213, 0.22);
+}
+
+.ally small i {
+  background: var(--lime);
 }
 
 .bar-controls {
@@ -481,7 +469,7 @@ button small {
 
 .recipes {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 10px;
 }

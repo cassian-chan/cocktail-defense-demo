@@ -11,7 +11,7 @@
       <section class="game" aria-label="气泡特调防线 Demo 游戏区域">
         <header class="topbar">
           <div>
-            <p class="eyebrow">第 <span id="wave">1</span> 波</p>
+            <p class="eyebrow">第 <span id="wave">1</span> 轮</p>
             <h1>气泡特调防线 Demo</h1>
           </div>
           <button id="restartBtn" class="icon-button" type="button" aria-label="重新开始" title="重新开始">
@@ -28,23 +28,23 @@
             </div>
           </div>
           <div class="meter">
-            <span>醒酒力</span>
+            <span>调酒力</span>
             <strong id="spark">70</strong>
             <div class="meter-track tonic">
               <i id="sparkFill"></i>
             </div>
           </div>
           <div class="score">
-            <span>清醒数</span>
-            <strong id="score">0</strong>
+            <span>对面吧台</span>
+            <strong id="score">20</strong>
           </div>
         </section>
 
         <section class="arena">
           <div class="lane-label">调酒区</div>
           <div id="board" class="board" aria-label="调酒布阵格"></div>
-          <div class="lane-label enemy-label">闹场通道</div>
-          <div id="lanes" class="lanes" aria-label="敌人通道"></div>
+          <div class="lane-label enemy-label">对战区</div>
+          <div id="lanes" class="lanes" aria-label="鸡尾酒对战通道"></div>
         </section>
 
         <section class="bar-controls" aria-label="调酒操作">
@@ -61,7 +61,7 @@
         </section>
 
         <section class="recipe-panel">
-          <h2>今日酒单</h2>
+          <h2>组合酒单</h2>
           <div id="recipeList" class="recipes"></div>
         </section>
 
@@ -70,7 +70,7 @@
           <div class="result-panel">
             <p id="resultKicker">营业结束</p>
             <h2 id="resultTitle">吧台守住了</h2>
-            <p id="resultText">你把混乱的夜晚调回了清醒频道。</p>
+            <p id="resultText">你用组合配方赢下了这局。</p>
             <button id="resultRestartBtn" class="primary-button" type="button">再来一局</button>
           </div>
         </div>
