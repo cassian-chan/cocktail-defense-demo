@@ -225,6 +225,23 @@ h2 {
   background: rgba(183, 239, 103, 0.14);
 }
 
+.slot.locked {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 6px, rgba(0,0,0,0.12) 6px 12px);
+}
+
+.slot.locked::after {
+  content: "锁";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(245, 240, 232, 0.32);
+  font-size: 18px;
+  font-weight: 900;
+}
+
 .unit {
   position: absolute;
   touch-action: none;
@@ -250,6 +267,71 @@ h2 {
 
 .unit.dragging {
   opacity: 0.35;
+}
+
+.unit.combo-member {
+  box-shadow: 0 0 0 3px rgba(183, 239, 103, 0.36), 0 12px 22px rgba(0, 0, 0, 0.3);
+}
+
+.level-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 24px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 99px;
+  color: rgba(0, 0, 0, 0.78);
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.combo-badge {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 6px;
+  color: var(--ink);
+  background: rgba(17, 22, 23, 0.72);
+  font-size: 9px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.combo-bridge {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #102022;
+  background: var(--lime);
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.32);
+}
+
+.combo-bridge.horizontal {
+  top: 50%;
+  right: -16px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+}
+
+.combo-bridge.vertical {
+  left: 50%;
+  bottom: -16px;
+  width: 24px;
+  height: 24px;
+  transform: translateX(-50%);
 }
 
 .drag-ghost {
@@ -338,8 +420,7 @@ h2 {
   transform: translateY(-50%);
 }
 
-.enemy,
-.ally {
+.enemy {
   position: absolute;
   z-index: 4;
   width: 58px;
@@ -356,13 +437,11 @@ h2 {
   transform: translate(-50%, -50%);
 }
 
-.enemy b,
-.ally b {
+.enemy b {
   font-size: 22px;
 }
 
-.enemy em,
-.ally em {
+.enemy em {
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
@@ -372,8 +451,7 @@ h2 {
   font-weight: 900;
 }
 
-.enemy small,
-.ally small {
+.enemy small {
   position: absolute;
   left: 4px;
   right: 4px;
@@ -384,25 +462,22 @@ h2 {
   background: rgba(0, 0, 0, 0.22);
 }
 
-.enemy small i,
-.ally small i {
+.enemy small i {
   display: block;
   height: 100%;
   width: 100%;
-}
-
-.enemy small i {
   background: var(--red);
 }
 
-.ally {
-  color: #102022;
-  border-color: rgba(255, 255, 255, 0.42);
-  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.34), 0 0 0 3px rgba(91, 210, 213, 0.22);
-}
-
-.ally small i {
-  background: var(--lime);
+.projectile {
+  position: absolute;
+  z-index: 5;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--aqua);
+  box-shadow: 0 0 14px currentColor;
+  transform: translate(-50%, -50%);
 }
 
 .bar-controls {
