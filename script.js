@@ -19,15 +19,15 @@ const recipeListEl = document.querySelector("#recipeList");
 const toastEl = document.querySelector("#toast");
 
 const rows = 4;
-const cols = 3;
-const laneCount = 4;
+const cols = 4;
+const laneCount = 1;
 const maxHp = 20;
 const maxSpark = 100;
 const summonCost = 18;
 const specialCost = 50;
 const winWave = 6;
 const maxLevel = 4;
-const initialUnlockedSlots = 9;
+const initialUnlockedSlots = 12;
 
 const ingredients = {
   soda: { key: "soda", name: "苏打水", mark: "苏", color: "#5bd2d5", weight: 2.2 },
@@ -107,11 +107,12 @@ function init() {
   renderRecipes();
   placeUnit(0, "soda", 1);
   placeUnit(1, "soda", 1);
-  placeUnit(3, "gin", 1);
-  placeUnit(4, "tonic", 1);
-  placeUnit(6, "whiskey", 1);
+  placeUnit(4, "gin", 1);
+  placeUnit(5, "tonic", 1);
+  placeUnit(8, "whiskey", 1);
+  placeUnit(9, "ginger", 1);
   resultEl.classList.add("hidden");
-  showToast("相同素材拖到一起升级；不同素材相邻会组成双格鸡尾酒。");
+  showToast("核心区布阵：相同素材升级，不同素材相邻组成双格鸡尾酒。");
   updateCombos();
   updateHud();
   rafId = requestAnimationFrame(loop);
@@ -529,7 +530,7 @@ function updateSpawns(delta) {
 function spawnEnemy() {
   const kindIndex = Math.min(enemyKinds.length - 1, Math.floor((state.wave - 1) / 2));
   const kind = enemyKinds[Math.floor(Math.random() * (kindIndex + 1))];
-  const lane = Math.floor(Math.random() * laneCount);
+  const lane = 0;
   const hp = kind.hp + Math.ceil(state.wave * 1.2);
   enemies.push({
     id: createId("enemy"),
@@ -550,8 +551,7 @@ function updateUnits(delta, now) {
     if (unit.comboId) return;
     unit.cooldown -= delta;
     if (unit.cooldown > 0) return;
-    const lane = Math.floor(unit.slot / cols);
-    const target = getTargetInLanes([lane]);
+    const target = getTargetInLanes([0]);
     if (!target) return;
     const damage = unit.level;
     const color = ingredients[unit.key].color;
@@ -566,8 +566,7 @@ function updateCombosAttack(delta) {
     if (combo.cooldown > 0) return;
     const pairUnits = combo.unitIds.map((id) => units.find((unit) => unit.id === id)).filter(Boolean);
     if (pairUnits.length < 2) return;
-    const lanes = [...new Set(pairUnits.map((unit) => Math.floor(unit.slot / cols)))];
-    const target = getTargetInLanes(lanes);
+    const target = getTargetInLanes([0]);
     if (!target) return;
     const levelBonus = pairUnits.reduce((sum, unit) => sum + unit.level, 0);
     const damage = combo.recipe.damage + levelBonus;
@@ -722,13 +721,11 @@ function createId(prefix) {
 }
 
 function getUnitCenter(slotIndex) {
-  const lane = Math.floor(slotIndex / cols);
-  return { x: -26, y: getLaneY(lane) };
+  return { x: -26, y: getLaneY(0) };
 }
 
 function getComboCenter(pairUnits) {
-  const lanes = pairUnits.map((unit) => Math.floor(unit.slot / cols));
-  return { x: -22, y: lanes.reduce((sum, lane) => sum + getLaneY(lane), 0) / lanes.length };
+  return { x: -22, y: getLaneY(0) };
 }
 
 function getEnemyCenter(enemy) {

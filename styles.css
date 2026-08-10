@@ -175,7 +175,7 @@ h2 {
   flex: 1;
   min-height: 430px;
   display: grid;
-  grid-template-columns: 196px 1fr;
+  grid-template-columns: 250px 1fr;
   grid-template-rows: auto 1fr;
   gap: 8px 10px;
   padding: 12px;
@@ -200,10 +200,10 @@ h2 {
   grid-column: 1;
   grid-row: 2;
   display: grid;
-  grid-template-columns: repeat(3, 60px);
-  grid-auto-rows: 78px;
+  grid-template-columns: repeat(4, 54px);
+  grid-auto-rows: 68px;
   align-content: start;
-  gap: 8px;
+  gap: 7px;
 }
 
 .slot {
@@ -248,11 +248,12 @@ h2 {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   inset: 4px;
+  z-index: 2;
   display: grid;
-  grid-template-rows: 36px 1fr;
+  grid-template-rows: 30px minmax(14px, 1fr) 14px;
   align-items: center;
   justify-items: center;
-  padding: 5px 4px;
+  padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
   color: #111617;
@@ -289,17 +290,17 @@ h2 {
 }
 
 .combo-badge {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  bottom: 5px;
+  position: static;
+  width: 100%;
+  height: 14px;
+  line-height: 14px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--ink);
   background: rgba(17, 22, 23, 0.72);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
   text-align: center;
 }
@@ -312,7 +313,7 @@ h2 {
   border-radius: 999px;
   color: #102022;
   background: var(--lime);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 900;
   pointer-events: none;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.32);
@@ -320,17 +321,17 @@ h2 {
 
 .combo-bridge.horizontal {
   top: 50%;
-  right: -16px;
-  width: 24px;
-  height: 24px;
+  right: -12px;
+  width: 18px;
+  height: 18px;
   transform: translateY(-50%);
 }
 
 .combo-bridge.vertical {
   left: 50%;
-  bottom: -16px;
-  width: 24px;
-  height: 24px;
+  bottom: -12px;
+  width: 18px;
+  height: 18px;
   transform: translateX(-50%);
 }
 
@@ -343,13 +344,13 @@ h2 {
 }
 
 .unit .mark {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.62);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -358,14 +359,22 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: visible;
+  overflow: hidden;
   white-space: normal;
-  line-height: 1.05;
+  line-height: 1;
   text-align: center;
   word-break: keep-all;
   color: rgba(0, 0, 0, 0.82);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
+}
+
+.unit:not(.combo-member) .name {
+  grid-row: 2 / 4;
+}
+
+.unit:not(.combo-member) .combo-badge {
+  display: none;
 }
 
 .ingredient-card {
@@ -382,13 +391,7 @@ h2 {
   border-radius: 0 8px 8px 0;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 18%),
-    repeating-linear-gradient(
-      180deg,
-      rgba(244, 119, 150, 0.06) 0,
-      rgba(244, 119, 150, 0.06) 72px,
-      rgba(255, 255, 255, 0.1) 72px,
-      rgba(255, 255, 255, 0.1) 73px
-    );
+    linear-gradient(180deg, transparent 0 40%, rgba(244, 119, 150, 0.12) 40% 60%, transparent 60% 100%);
 }
 
 .lane-line {
@@ -405,7 +408,7 @@ h2 {
   z-index: 0;
   left: 8px;
   right: 8px;
-  height: 42px;
+  height: 56px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.055);
   transform: translateY(-50%);
@@ -629,20 +632,20 @@ button small {
   margin-top: 16px;
 }
 
-@media (max-width: 380px) {
+@media (max-width: 430px) {
   .game {
     padding: 12px;
   }
 
   .arena {
-    grid-template-columns: 174px 1fr;
+    grid-template-columns: 214px 1fr;
     padding: 10px;
   }
 
   .board {
-    grid-template-columns: repeat(3, 52px);
-    grid-auto-rows: 74px;
-    gap: 7px;
+    grid-template-columns: repeat(4, 48px);
+    grid-auto-rows: 64px;
+    gap: 6px;
   }
 
   .status-grid {
