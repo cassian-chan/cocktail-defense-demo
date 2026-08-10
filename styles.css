@@ -175,7 +175,7 @@ h2 {
   flex: 1;
   min-height: 430px;
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 1fr auto;
   grid-template-rows: auto 1fr;
   gap: 8px 10px;
   padding: 12px;
@@ -196,14 +196,29 @@ h2 {
   text-align: right;
 }
 
-.board {
-  grid-column: 1;
+.battlefield {
+  position: relative;
+  grid-column: 1 / -1;
   grid-row: 2;
+  min-height: 430px;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(91, 210, 213, 0.08), transparent 54%),
+    rgba(0, 0, 0, 0.1);
+}
+
+.board {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
   display: grid;
   grid-template-columns: repeat(4, 54px);
   grid-auto-rows: 68px;
   align-content: start;
   gap: 7px;
+  transform: translate(-50%, -50%);
 }
 
 .slot {
@@ -212,7 +227,7 @@ h2 {
   min-width: 0;
   border: 1px dashed rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .slot.over {
@@ -250,9 +265,7 @@ h2 {
   inset: 4px;
   z-index: 2;
   display: grid;
-  grid-template-rows: 30px minmax(14px, 1fr) 14px;
-  align-items: center;
-  justify-items: center;
+  place-items: center;
   padding: 4px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
@@ -278,60 +291,39 @@ h2 {
   position: absolute;
   top: 4px;
   right: 4px;
-  min-width: 24px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   display: grid;
   place-items: center;
-  border-radius: 99px;
+  border-radius: 50%;
   color: rgba(0, 0, 0, 0.78);
-  background: rgba(255, 255, 255, 0.55);
-  font-size: 9px;
+  background: rgba(255, 255, 255, 0.62);
+  font-size: 10px;
   font-weight: 900;
-}
-
-.combo-badge {
-  position: static;
-  width: 100%;
-  height: 14px;
-  line-height: 14px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  border-radius: 5px;
-  color: var(--ink);
-  background: rgba(17, 22, 23, 0.72);
-  font-size: 8px;
-  font-weight: 900;
-  text-align: center;
 }
 
 .combo-bridge {
   position: absolute;
   z-index: 1;
-  display: grid;
-  place-items: center;
   border-radius: 999px;
-  color: #102022;
-  background: var(--lime);
-  font-size: 10px;
-  font-weight: 900;
+  background: rgba(183, 239, 103, 0.86);
   pointer-events: none;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 0 12px rgba(183, 239, 103, 0.45);
 }
 
 .combo-bridge.horizontal {
   top: 50%;
   right: -12px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 8px;
   transform: translateY(-50%);
 }
 
 .combo-bridge.vertical {
   left: 50%;
   bottom: -12px;
-  width: 18px;
-  height: 18px;
+  width: 8px;
+  height: 20px;
   transform: translateX(-50%);
 }
 
@@ -344,36 +336,18 @@ h2 {
 }
 
 .unit .mark {
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.62);
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 900;
 }
 
-.unit .name {
-  max-width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  white-space: normal;
-  line-height: 1;
-  text-align: center;
-  word-break: keep-all;
-  color: rgba(0, 0, 0, 0.82);
-  font-size: 9px;
-  font-weight: 900;
-}
-
-.unit:not(.combo-member) .name {
-  grid-row: 2 / 4;
-}
-
-.unit:not(.combo-member) .combo-badge {
+.unit .name,
+.combo-badge {
   display: none;
 }
 
@@ -382,45 +356,88 @@ h2 {
 }
 
 .lanes {
-  grid-column: 2;
-  grid-row: 2;
-  position: relative;
-  min-height: 100%;
-  overflow: hidden;
-  border-left: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0 8px 8px 0;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 18%),
-    linear-gradient(180deg, transparent 0 40%, rgba(244, 119, 150, 0.12) 40% 60%, transparent 60% 100%);
-}
-
-.lane-line {
   position: absolute;
   z-index: 1;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.16);
+  inset: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 16px);
 }
 
-.lane-track {
+.lanes::before {
+  content: "";
   position: absolute;
   z-index: 0;
-  left: 8px;
-  right: 8px;
-  height: 56px;
+  left: 18%;
+  right: 18%;
+  top: 18%;
+  bottom: 18%;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.055);
-  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.lane-track::after {
+.path-segment {
+  position: absolute;
+  z-index: 1;
+  border-radius: 999px;
+  background: rgba(244, 119, 150, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.path-segment::after {
   content: "";
   position: absolute;
   inset: 50% 8px auto;
   height: 2px;
-  background-image: linear-gradient(90deg, rgba(255,255,255,0.28) 0 12px, transparent 12px 22px);
+  background-image: linear-gradient(90deg, rgba(255,255,255,0.32) 0 12px, transparent 12px 22px);
   transform: translateY(-50%);
+}
+
+.path-top {
+  left: 8%;
+  right: 8%;
+  top: calc(12% - 24px);
+  height: 48px;
+}
+
+.path-bottom {
+  left: 8%;
+  right: 8%;
+  bottom: calc(12% - 24px);
+  height: 48px;
+}
+
+.path-left {
+  left: calc(8% - 24px);
+  top: 12%;
+  bottom: 12%;
+  width: 48px;
+}
+
+.path-right {
+  right: calc(8% - 24px);
+  top: 12%;
+  bottom: 12%;
+  width: 48px;
+}
+
+.path-left::after,
+.path-right::after {
+  inset: 8px auto 8px 50%;
+  width: 2px;
+  height: auto;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.32) 0 12px, transparent 12px 22px);
+  transform: translateX(-50%);
+}
+
+.path-exit {
+  right: -4%;
+  top: calc(50% - 24px);
+  width: 16%;
+  height: 48px;
 }
 
 .enemy {
@@ -638,14 +655,23 @@ button small {
   }
 
   .arena {
-    grid-template-columns: 214px 1fr;
     padding: 10px;
+  }
+
+  .battlefield {
+    min-height: 400px;
   }
 
   .board {
     grid-template-columns: repeat(4, 48px);
     grid-auto-rows: 64px;
     gap: 6px;
+  }
+
+  .unit .mark {
+    width: 34px;
+    height: 34px;
+    font-size: 20px;
   }
 
   .status-grid {

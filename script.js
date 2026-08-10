@@ -20,7 +20,6 @@ const toastEl = document.querySelector("#toast");
 
 const rows = 4;
 const cols = 4;
-const laneCount = 1;
 const maxHp = 20;
 const maxSpark = 100;
 const summonCost = 18;
@@ -28,6 +27,16 @@ const specialCost = 50;
 const winWave = 6;
 const maxLevel = 4;
 const initialUnlockedSlots = 12;
+const boardBounds = { left: 20, top: 16, width: 60, height: 68 };
+const enemyPathPoints = [
+  { x: 92, y: 12 },
+  { x: 8, y: 12 },
+  { x: 8, y: 88 },
+  { x: 92, y: 88 },
+  { x: 92, y: 50 },
+  { x: 103, y: 50 },
+];
+const enemyPathLength = getPolylineLength(enemyPathPoints);
 
 const ingredients = {
   soda: { key: "soda", name: "苏打水", mark: "苏", color: "#5bd2d5", weight: 2.2 },
@@ -112,7 +121,7 @@ function init() {
   placeUnit(8, "whiskey", 1);
   placeUnit(9, "ginger", 1);
   resultEl.classList.add("hidden");
-  showToast("核心区布阵：相同素材升级，不同素材相邻组成双格鸡尾酒。");
+  showToast("围绕核心区布阵：相同素材升级，相邻配方组成双格鸡尾酒。");
   updateCombos();
   updateHud();
   rafId = requestAnimationFrame(loop);
@@ -131,18 +140,11 @@ function buildBoard() {
 
 function buildLanes() {
   lanesEl.innerHTML = "";
-  for (let i = 0; i < laneCount; i += 1) {
-    const track = document.createElement("div");
-    track.className = "lane-track";
-    track.style.top = `${getLaneY(i)}%`;
-    lanesEl.appendChild(track);
-  }
-  for (let i = 1; i < laneCount; i += 1) {
-    const line = document.createElement("div");
-    line.className = "lane-line";
-    line.style.top = `${(i / laneCount) * 100}%`;
-    lanesEl.appendChild(line);
-  }
+  ["top", "left", "bottom", "right", "exit"].forEach((part) => {
+    const segment = document.createElement("div");
+    segment.className = `path-segment path-${part}`;
+    lanesEl.appendChild(segment);
+  });
 }
 
 function renderRecipes() {
@@ -194,11 +196,10 @@ function renderUnits() {
     el.draggable = false;
     el.dataset.id = unit.id;
     el.style.background = ingredient.color;
+    el.title = combo ? `${ingredient.name} Lv.${unit.level} · ${combo.recipe.name}` : `${ingredient.name} Lv.${unit.level}`;
     el.innerHTML = `
       <div class="mark">${ingredient.mark}</div>
-      <div class="name">${ingredient.name}</div>
-      <div class="level-badge">Lv.${unit.level}</div>
-      ${combo ? `<div class="combo-badge">${combo.recipe.name}</div>` : ""}
+      <div class="level-badge">${unit.level}</div>
     `;
     el.addEventListener("pointerdown", (event) => startUnitDrag(event, unit.id));
     slotEl.appendChild(el);
@@ -213,7 +214,6 @@ function renderComboBridges() {
     if (!aEl || !bEl) return;
     const bridge = document.createElement("div");
     bridge.className = `combo-bridge ${Math.abs(a - b) === 1 ? "horizontal" : "vertical"}`;
-    bridge.textContent = combo.recipe.mark;
     const anchor = a < b ? aEl : bEl;
     anchor.appendChild(bridge);
   });
@@ -530,12 +530,14 @@ function updateSpawns(delta) {
 function spawnEnemy() {
   const kindIndex = Math.min(enemyKinds.length - 1, Math.floor((state.wave - 1) / 2));
   const kind = enemyKinds[Math.floor(Math.random() * (kindIndex + 1))];
-  const lane = 0;
+  const position = getPathPosition(0);
   const hp = kind.hp + Math.ceil(state.wave * 1.2);
   enemies.push({
     id: createId("enemy"),
-    lane,
-    x: 92,
+    lane: 0,
+    pathDistance: 0,
+    x: position.x,
+    y: position.y,
     hp,
     maxHp: hp,
     speed: kind.speed + state.wave * 0.9,
@@ -579,7 +581,7 @@ function updateCombosAttack(delta) {
 function getTargetInLanes(lanes) {
   return enemies
     .filter((enemy) => lanes.includes(enemy.lane))
-    .sort((a, b) => a.x - b.x)[0];
+    .sort((a, b) => b.pathDistance - a.pathDistance)[0];
 }
 
 function fireProjectile(source, target, targetId, damage, color, effect = {}) {
@@ -604,17 +606,20 @@ function updateEnemies(delta, now) {
   enemies.forEach((enemy) => {
     const chilled = enemy.slowUntil > now;
     const speed = chilled ? enemy.speed * 0.46 : enemy.speed;
-    enemy.x -= (speed * delta) / 1000;
+    enemy.pathDistance += (speed * delta) / 1000;
+    const position = getPathPosition(enemy.pathDistance);
+    enemy.x = position.x;
+    enemy.y = position.y;
   });
 
   enemies
-    .filter((enemy) => enemy.x <= -8)
+    .filter((enemy) => enemy.pathDistance >= enemyPathLength)
     .forEach((enemy) => {
       state.hp -= enemy.damage;
       showToast(`${enemy.name}撞到了吧台`);
     });
 
-  enemies = enemies.filter((enemy) => enemy.x > -8);
+  enemies = enemies.filter((enemy) => enemy.pathDistance < enemyPathLength);
   if (state.hp <= 0) endGame(false);
 }
 
@@ -643,7 +648,7 @@ function hitEnemy(projectile) {
   if (projectile.splash) {
     enemies.forEach((enemy) => {
       if (enemy.id === target.id || enemy.lane !== target.lane) return;
-      if (Math.abs(enemy.x - target.x) <= projectile.splash) enemy.hp -= Math.ceil(projectile.damage * 0.42);
+      if (Math.abs(enemy.pathDistance - target.pathDistance) <= projectile.splash) enemy.hp -= Math.ceil(projectile.damage * 0.42);
     });
   }
 }
@@ -695,7 +700,7 @@ function renderGame() {
     const el = document.createElement("div");
     el.className = "enemy";
     el.style.left = `${enemy.x}%`;
-    el.style.top = `${getLaneY(enemy.lane)}%`;
+    el.style.top = `${enemy.y}%`;
     el.title = enemy.name;
     el.innerHTML = `<b>${enemy.mark}</b><em>${enemy.name}</em><small><i style="width:${Math.max(0, (enemy.hp / enemy.maxHp) * 100)}%"></i></small>`;
     lanesEl.appendChild(el);
@@ -721,19 +726,50 @@ function createId(prefix) {
 }
 
 function getUnitCenter(slotIndex) {
-  return { x: -26, y: getLaneY(0) };
+  const row = Math.floor(slotIndex / cols);
+  const col = slotIndex % cols;
+  return {
+    x: boardBounds.left + ((col + 0.5) / cols) * boardBounds.width,
+    y: boardBounds.top + ((row + 0.5) / rows) * boardBounds.height,
+  };
 }
 
 function getComboCenter(pairUnits) {
-  return { x: -22, y: getLaneY(0) };
+  const centers = pairUnits.map((unit) => getUnitCenter(unit.slot));
+  return {
+    x: centers.reduce((sum, center) => sum + center.x, 0) / centers.length,
+    y: centers.reduce((sum, center) => sum + center.y, 0) / centers.length,
+  };
 }
 
 function getEnemyCenter(enemy) {
-  return { x: enemy.x, y: getLaneY(enemy.lane) };
+  return { x: enemy.x, y: enemy.y };
 }
 
-function getLaneY(lane) {
-  return ((lane + 0.5) / laneCount) * 100;
+function getPolylineLength(points) {
+  return points.slice(1).reduce((sum, point, index) => sum + getDistance(points[index], point), 0);
+}
+
+function getPathPosition(distance) {
+  let remaining = Math.max(0, Math.min(distance, enemyPathLength));
+  for (let i = 1; i < enemyPathPoints.length; i += 1) {
+    const start = enemyPathPoints[i - 1];
+    const end = enemyPathPoints[i];
+    const segment = getDistance(start, end);
+    if (remaining <= segment) {
+      const t = segment === 0 ? 0 : remaining / segment;
+      return {
+        x: start.x + (end.x - start.x) * t,
+        y: start.y + (end.y - start.y) * t,
+      };
+    }
+    remaining -= segment;
+  }
+  return enemyPathPoints[enemyPathPoints.length - 1];
+}
+
+function getDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function updateHud() {
